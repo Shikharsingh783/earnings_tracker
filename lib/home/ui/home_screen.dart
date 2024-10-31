@@ -1,11 +1,12 @@
-import 'package:earnings_tracker/home/bloc/home_bloc.dart'; // Import your HomeBloc
+import 'package:earnings_tracker/home/bloc/home_bloc.dart';
 import 'package:earnings_tracker/home/bloc/home_event.dart';
 import 'package:earnings_tracker/home/bloc/home_state.dart';
 import 'package:earnings_tracker/repo/repo.dart';
 import 'package:earnings_tracker/transcript/ui/transcript_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart'; // Import flutter_bloc
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,16 +18,17 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController tickerController = TextEditingController();
   bool isTranscriptOpen = false; // Flag to check if transcript is open
+  Timer? longPressTimer; // Timer to manage long press detection
 
   @override
   void initState() {
     super.initState();
     tickerController.text = 'AAPL'; // Default ticker symbol
-    // Dispatch initial event to fetch data if needed
   }
 
   void onNodeTap(BuildContext context, int index) async {
-    if (isTranscriptOpen) return; // Prevent multiple openings
+    if (isTranscriptOpen)
+      return; // Prevent opening if transcript is already open
     isTranscriptOpen = true; // Set flag to true
     const year = 2024; // Placeholder; update as per your data
     final quarter = (index % 4) + 1;
@@ -51,9 +53,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void onNodeLongPress(BuildContext context, int index) {
+    // Cancel any existing timer
+    longPressTimer?.cancel();
+    final actualRevenue =
+        context.read<HomeBloc>().state.actualRevenueData[index];
+    final estimatedRevenue =
+        context.read<HomeBloc>().state.estimatedRevenueData[index];
+
+    // Displaying the actual and estimated revenue using a Snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Actual: \$${actualRevenue}B, Estimated: \$${estimatedRevenue}B',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.black,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     tickerController.dispose();
+    longPressTimer?.cancel(); // Clean up timer
     super.dispose();
   }
 
@@ -75,12 +99,11 @@ class _HomeScreenState extends State<HomeScreen> {
             }
 
             if (state.homeStatus == HomeStatus.error) {
-              return Center(
+              return const Center(
                 child: Text("Error fetching data"),
               );
             }
 
-            // Calculate maxY to handle cases when lists are empty
             double maxActual = state.actualRevenueData.isNotEmpty
                 ? state.actualRevenueData.reduce((a, b) => a > b ? a : b)
                 : 0;
@@ -101,12 +124,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextField(
+                    cursorWidth: 5,
+                    cursorColor: Colors.black.withOpacity(0.5),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                     controller: tickerController,
                     decoration: InputDecoration(
                       labelText: 'Ticker Symbol',
-                      border: const OutlineInputBorder(),
+                      labelStyle: const TextStyle(color: Colors.black),
+                      focusedBorder: const OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Colors.black, width: 3)),
+                      enabledBorder: const OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Colors.black, width: 1)),
                       filled: true,
-                      fillColor: Colors.grey[200],
+                      fillColor: Colors.grey[300],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -116,11 +148,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       textStyle: const TextStyle(fontSize: 16),
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: () {
                       String ticker = tickerController.text.trim();
                       if (ticker.isNotEmpty) {
-                        // Dispatch FetchDataEvent to fetch data
                         context.read<HomeBloc>().add(FetchDataEvent(ticker));
                       }
                     },
@@ -150,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           isCurved: true,
                           color: Colors.grey[800]!,
-                          dotData: FlDotData(show: true),
+                          dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,
                             color: Colors.grey[800]!.withOpacity(0.2),
@@ -165,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           isCurved: true,
                           color: Colors.red[800]!,
-                          dotData: FlDotData(show: true),
+                          dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,
                             color: Colors.red[800]!.withOpacity(0.2),
@@ -208,8 +242,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         touchCallback: (event, response) {
                           if (response != null &&
                               response.lineBarSpots != null) {
-                            onNodeTap(
-                                context, response.lineBarSpots![0].spotIndex);
+                            if (event is FlTapDownEvent) {
+                              // Cancel the long press timer if tap detected
+                              longPressTimer?.cancel();
+                              // Handle tap event
+                              onNodeTap(
+                                  context, response.lineBarSpots![0].spotIndex);
+                            } else if (event is FlLongPressStart) {
+                              // Start long press timer to delay the tap action
+                              longPressTimer
+                                  ?.cancel(); // Cancel any existing timer
+                              longPressTimer =
+                                  Timer(const Duration(milliseconds: 300), () {
+                                final index =
+                                    response.lineBarSpots![0].spotIndex;
+                                onNodeLongPress(context, index);
+                              });
+                            }
                           }
                         },
                       ),
