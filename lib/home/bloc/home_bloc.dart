@@ -34,7 +34,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       ));
     } catch (e) {
       // Emit error state if fetching fails
-      emit(state.copyWith(homestatus: HomeStatus.error));
+      emit(state.copyWith(
+        homestatus: HomeStatus.error,
+        message: e.toString(),
+      ));
     }
   }
 }
