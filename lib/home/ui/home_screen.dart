@@ -60,9 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void onNodeTap(BuildContext context, int index) async {
     if (isTranscriptOpen) return; // Prevent multiple openings
     isTranscriptOpen = true; // Set flag to true
-
-    // Map index to year and quarter based on your data structure
-    final year = 2024; // Placeholder; update as per your data
+    const year = 2024; // Placeholder; update as per your data
     final quarter = (index % 4) + 1;
 
     try {
@@ -98,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Earnings Tracker'),
         centerTitle: true,
         backgroundColor: Colors.black,
+        foregroundColor: Colors.grey,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

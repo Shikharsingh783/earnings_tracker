@@ -12,6 +12,7 @@ class TranscriptScreen extends StatelessWidget {
         title: const Text('Earnings Call Transcript'),
         centerTitle: true,
         backgroundColor: Colors.black,
+        foregroundColor: Colors.grey,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
