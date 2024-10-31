@@ -1,5 +1,6 @@
 import 'package:earnings_tracker/Model/earning_mode.dart';
 import 'package:earnings_tracker/repo/repo.dart';
+import 'package:earnings_tracker/transcript/ui/transcript_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
@@ -16,6 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<double> estimatedRevenueData = [];
   List<String> quarters = [];
   bool isLoading = true;
+  bool isTranscriptOpen = false; // Flag to check if transcript is open
 
   @override
   void initState() {
@@ -52,6 +54,34 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  void onNodeTap(BuildContext context, int index) async {
+    if (isTranscriptOpen) return; // Prevent multiple openings
+    isTranscriptOpen = true; // Set flag to true
+
+    // Map index to year and quarter based on your data structure
+    final year = 2024; // Placeholder; update as per your data
+    final quarter = (index % 4) + 1;
+
+    try {
+      final transcript =
+          await fetchTranscriptData(tickerController.text, year, quarter);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TranscriptScreen(transcript: transcript),
+        ),
+      ).then((_) {
+        // Reset flag when returning from TranscriptScreen
+        isTranscriptOpen = false;
+      });
+    } catch (e) {
+      isTranscriptOpen = false; // Reset flag on error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load transcript: $e")),
+      );
     }
   }
 
@@ -119,11 +149,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 20),
                   Expanded(
                     child: LineChart(LineChartData(
-                      minY:
-                          0, // Set the minimum Y-axis value to start from the bottom
+                      minY: 0,
                       maxY: (actualRevenueData + estimatedRevenueData)
                               .reduce((a, b) => a > b ? a : b) +
-                          10, // Optional: add some padding
+                          10,
                       lineBarsData: [
                         LineChartBarData(
                           spots: List.generate(
@@ -188,44 +217,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       lineTouchData: LineTouchData(
-                        touchTooltipData: LineTouchTooltipData(
-                          getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                            return touchedSpots.map((spot) {
-                              final dataType =
-                                  spot.bar.color == Colors.grey[800]
-                                      ? 'Actual Revenue'
-                                      : 'Estimated Revenue';
-                              return LineTooltipItem(
-                                '$dataType: \$${spot.y.toStringAsFixed(0)} B',
-                                const TextStyle(
-                                    color: Colors.white, fontSize: 12),
-                              );
-                            }).toList();
-                          },
-                        ),
                         touchCallback: (event, response) {
                           if (response != null &&
                               response.lineBarSpots != null) {
-                            print(
-                                'Data point clicked at index: ${response.lineBarSpots![0].spotIndex}');
+                            onNodeTap(
+                                context, response.lineBarSpots![0].spotIndex);
                           }
                         },
                       ),
                     )),
                   ),
                   const SizedBox(height: 20),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      textStyle: const TextStyle(fontSize: 16),
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () {
-                      // Navigate to details page or show more information about earnings
-                    },
-                    child: const Text('View Earnings Details'),
-                  ),
                 ],
               ),
             ),

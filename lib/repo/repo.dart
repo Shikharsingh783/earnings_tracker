@@ -20,3 +20,27 @@ Future<List<EarningsData>> fetchEarningsData(String ticker) async {
     throw Exception("Error fetching data: $e");
   }
 }
+
+Future<String> fetchTranscriptData(String ticker, int year, int quarter) async {
+  final url = Uri.parse(
+      'https://api.api-ninjas.com/v1/earningstranscript?ticker=$ticker&year=$year&quarter=$quarter');
+
+  try {
+    final response = await http.get(
+      url,
+      headers: {
+        'X-Api-Key': 'OjDPTjE8tEisUA/LOPRj+A==fOekwR6wssGOxmbG',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['transcript'] ?? "Transcript not available.";
+    } else {
+      throw Exception("Failed to load transcript data");
+    }
+  } catch (e) {
+    print(e);
+    throw Exception("Error fetching transcript data: $e");
+  }
+}
