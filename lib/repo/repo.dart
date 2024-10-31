@@ -3,7 +3,8 @@ import 'package:earnings_tracker/Model/earning_mode.dart';
 import 'package:http/http.dart' as http;
 
 Future<List<EarningsData>> fetchEarningsData(String ticker) async {
-  final url = Uri.parse('https://api-ninjas.com/api/earningscalendar');
+  final url = Uri.parse(
+      'https://api.api-ninjas.com/v1/earningscalendar?ticker=$ticker');
 
   try {
     final response = await http.get(url);
